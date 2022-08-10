@@ -1,0 +1,210 @@
+= VMware vCenter Server Appliance (VCSA) Deployment Steps
+These deployment step will walk through the deployment of a VMware vCenter Server Appliance onto a single VMware ESXi hypervisor. 
+
+== Prerequisites 
+* There is an ESXi hypervisor already deployed with networking configured
+
+* Installation media for the VCSA has been https://customerconnect.vmware.com/en/downloads/info/slug/datacenter_cloud_infrastructure/vmware_vsphere/7_0[Downloaded]
+
+* DNS is configured and functioning correctly within the environment with A records  created for both the ESXi hypervisor and the VCSA being deployed.
+
+* NTP is configured and functioning correctly within the environment
+
+NOTE: There are workarounds if DNS and/ or NTP are not yet configured within the environment
+
+* Information in the following tables must be gathered as prerequisite to deploying the VMware VCSA as it will be required to populate the deployment template file.
+
+.Environment Data
+[options="header"]
+|===
+|Environment Property | Value
+
+|DNS_SERVER 
+|IP Address
+
+|DNS_DOMAIN 
+|<search domain>
+
+|NTP_SERVER
+|IP Address
+
+|===
+
+.ESXi Data
+[options="header"]
+|===
+|ESX Property | Value
+
+|ESX_SERVER
+|IP Address or hostname
+
+|ESX_USER_NAME
+|root
+
+|ESX_USER_PASS 
+|<hidden>
+
+|ESX_DATASTORE
+|datastore1
+
+|ESX_NETWORK
+| VM Network
+
+|===
+
+.VCSA Data
+[options="header"]
+|===
+|Virtual Environment Property | Value
+
+|VCSA_SERVER
+|IP Address or hostname
+
+|VCSA_USER_NAME
+|administrator@vsphere.local
+
+|VCSA_USER_PASS
+|<hidden>
+
+|===
+
+== Deployment Steps
+IMPORTANT: These deployment steps were drafted while deploying using RHEL 8.6. 
+
+. If not already deployed, deploy a RHEL system running RHEL 8.6 as the "deployment VM". 
+
+NOTE: Newer and older versions should work however they will require different versions of the dependency package. 
+
+[start=2]
+. Install libnsl package within the deployment VM
+.. If satelite is online, run the following command:
+[example]
+`sudo dnf install libnsl`
+.. If satellite is not online:
+... The package will need to be https://access.redhat.com/downloads/content/package-browser[downloaded] and airgapped to the system.
+... The version of libnsl needs to match the version of glibc. Run the following command to check:
+[example]
+`rpm -qa | grep glibc`
+... Once the package is on the deployment VM run the following command to install
+[example]
+`sudo rpm -i <rpm_package>`
+
+. Create a directory to mount the VCSA installation media
+[example]
+`mkdir /vcsa-deployment`
+
+. Mount the VCSA installation media to the deployment VM
+[example]
+`mount /dev/sr0 /vcsa-deployment`
+
+. Locate, copy, and rename the template file embedded_vCSA_on_ESXi.json to vctemplate.json
+[example]
+`cp /vcsa-deployment/vcsa-cli-installer/template/install/embedded_vCSA_on_ESXi.json /tmp/vctemplate.json`
+
+. Make modifications to the vctemplate.json file to reflect the environment.
+
+====
+[source,json]
+----
+{
+    "__version": "2.13.0",
+    "__comments": "Sample template to deploy a vCenter Server Appliance with an embedded Platform Services Controller on an ESXi host.",
+    "new_vcsa": {
+        "esxi": {
+            "hostname": "<FQDN or IP address of the ESXi host on which to deploy the new appliance>", // <1>
+            "username": "root",
+            "password": "<Password of the ESXi host root user. If left blank, or omitted, you will be prompted to enter it at the command console during template verification.>",
+            "deployment_network": "VM Network",
+            "datastore": "<A specific ESXi host datastore, or a specific datastore in a datastore cluster.>"
+        },
+        "appliance": {
+            "__comments": [
+                "You must provide the 'deployment_option' key with a value, which will affect the vCenter Server Appliance's configuration parameters, such as the vCenter Server Appliance's number of vCPUs, the memory size, the storage size, and the maximum numbers of ESXi hosts and VMs which can be managed. For a list of acceptable values, run the supported deployment sizes help, i.e. vcsa-deploy --supported-deployment-sizes"
+            ],
+            "thin_disk_mode": true,
+            "deployment_option": "small",
+            "name": "Embedded-vCenter-Server-Appliance"
+        },
+        "network": {
+            "ip_family": "ipv4",
+            "mode": "static",
+            "system_name": "<FQDN or IP address for the appliance. Optional when the mode is Static. Remove this if using dhcp.>",
+            "ip": "<Static IP address. Remove this if using dhcp.>",
+            "prefix": "<Network prefix length. Use only when the mode is 'static'. Remove if the mode is 'dhcp'. This is the number of bits set in the subnet mask; for instance, if the subnet mask is 255.255.255.0, there are 24 bits in the binary version of the subnet mask, so the prefix length is 24. If used, the values must be in the inclusive range of 0 to 32 for IPv4 and 0 to 128 for IPv6.>",
+            "gateway": "<Gateway IP address. Remove this if using dhcp.>",
+            "dns_servers": [
+                "<DNS Server IP Address. Optional when the mode is Static. Remove this if using dhcp.>"
+            ]
+        },
+        "os": {
+            "password": "<Appliance root password; refer to --template-help for password policy. If left blank, or omitted, you will be prompted to enter it at the command console during template verification.>",
+            "ntp_servers": "time.nist.gov",
+            "ssh_enable": false
+        },
+        "sso": {
+            "password": "<vCenter Single Sign-On administrator password; refer to --template-help for password policy. If left blank, or omitted, you will be prompted to enter it at the command console during template verification.>",
+            "domain_name": "vsphere.local"
+        }
+    },
+    "ceip": {
+        "description": {
+            "__comments": [
+                "++++VMware Customer Experience Improvement Program (CEIP)++++",
+                "VMware's Customer Experience Improvement Program (CEIP) ",
+                "provides VMware with information that enables VMware to ",
+                "improve its products and services, to fix problems, ",
+                "and to advise you on how best to deploy and use our ",
+                "products. As part of CEIP, VMware collects technical ",
+                "information about your organization's use of VMware ",
+                "products and services on a regular basis in association ",
+                "with your organization's VMware license key(s). This ",
+                "information does not personally identify any individual. ",
+                "",
+                "Additional information regarding the data collected ",
+                "through CEIP and the purposes for which it is used by ",
+                "VMware is set forth in the Trust & Assurance Center at ",
+                "http://www.vmware.com/trustvmware/ceip.html . If you ",
+                "prefer not to participate in VMware's CEIP for this ",
+                "product, you should disable CEIP by setting ",
+                "'ceip_enabled': false. You may join or leave VMware's ",
+                "CEIP for this product at any time. Please confirm your ",
+                "acknowledgement by passing in the parameter ",
+                "--acknowledge-ceip in the command line.",
+                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+            ]
+        },
+        "settings": {
+            "ceip_enabled": true
+        }
+    }
+}
+----
+<1> ESX_SERVER
+====
+
+.. new_vcsa.esxi.hostname = { ESX_SERVER }
+.. new_vcsa.esxi.username = { ESX_USER_NAME }
+.. new_vcsa.esxi.password = { ESX_USER_PASS } 
+.. new_vcsa.esxi.deployment_network = { ESX_NETWORK }
+.. new_vcsa.esxi.datastore = { ESX_DATASTORE } 
+.. new_vcsa.appliance.name = { VCSA_SERVER }
+.. new_vcsa.network.system_name = { VCSA_SERVER }
+.. new_vcsa.network.ip = 
+.. new_vcsa.network.prefix = 
+.. new_vcsa.network.gateway = 
+.. new_vcsa.network.dns_servers = 
+.. new_vcsa.os.password = 
+.. new_vcsa.os.ntp_servers =
+.. new_vcsa.sso.password = 
+.. new_vcsa.sso.domain_name = 
+   
+WARNING: Domain_name is for SSO not your local domain
+
+[start=7]  
+. Run the command to deploy the VCSA pointing to the vctemplate.json file
+
+[example]
+`./vcsa-deployment/vcsa-cli-installer/lin64/vcsa-deploy install --accept-eula --acknowledge-ceip --terse -no-ssl-certificate-verification ./tmp/vctemplate.json` 
+
+The installation should not take more than 25 minutes to complete and once it is complete you can log into the VCSA, create supporting resources (datacenter, cluster, etc), add all of the ESXi hosts
+
