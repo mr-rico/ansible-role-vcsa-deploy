@@ -14,22 +14,6 @@ NOTE: There are workarounds if DNS and/ or NTP are not yet configured within the
 
 * Information in the following tables must be gathered as prerequisite to deploying the VMware VCSA as it will be required to populate the deployment template file.
 
-.Environment Data
-[options="header"]
-|===
-|Environment Property | Value
-
-|DNS_SERVER 
-|IP Address
-
-|DNS_DOMAIN 
-|<search domain>
-
-|NTP_SERVER
-|IP Address
-
-|===
-
 .ESXi Data
 [options="header"]
 |===
@@ -58,12 +42,27 @@ NOTE: There are workarounds if DNS and/ or NTP are not yet configured within the
 |Virtual Environment Property | Value
 
 |VCSA_SERVER
-|IP Address or hostname
+|Hostname
+
+|VCSA_IP_ADDRESS
+|IP Address
+
+|VCSA_IP_GATEWAY
+|IP Address
+
+|VCSA_IP_DNS
+|IP Address
+
+|VCSA_NTP
+|IP Address
 
 |VCSA_USER_NAME
 |administrator@vsphere.local
 
 |VCSA_USER_PASS
+|<hidden>
+
+|VCSA_SSO_PASS
 |<hidden>
 
 |===
@@ -112,38 +111,38 @@ NOTE: Newer and older versions should work however they will require different v
     "new_vcsa": {
         "esxi": {
             "hostname": "<FQDN or IP address of the ESXi host on which to deploy the new appliance>", // <1>
-            "username": "root",
-            "password": "<Password of the ESXi host root user. If left blank, or omitted, you will be prompted to enter it at the command console during template verification.>",
-            "deployment_network": "VM Network",
-            "datastore": "<A specific ESXi host datastore, or a specific datastore in a datastore cluster.>"
+            "username": "root", // <2>
+            "password": "<Password of the ESXi host root user>", // <3>
+            "deployment_network": "VM Network", // <4>
+            "datastore": "<ESXi host datastore>" // <5>
         },
         "appliance": {
             "__comments": [
                 "You must provide the 'deployment_option' key with a value, which will affect the vCenter Server Appliance's configuration parameters, such as the vCenter Server Appliance's number of vCPUs, the memory size, the storage size, and the maximum numbers of ESXi hosts and VMs which can be managed. For a list of acceptable values, run the supported deployment sizes help, i.e. vcsa-deploy --supported-deployment-sizes"
             ],
             "thin_disk_mode": true,
-            "deployment_option": "small",
-            "name": "Embedded-vCenter-Server-Appliance"
+            "deployment_option": "small", // <6>
+            "name": "Embedded-vCenter-Server-Appliance" // <7>
         },
         "network": {
-            "ip_family": "ipv4",
-            "mode": "static",
-            "system_name": "<FQDN or IP address for the appliance. Optional when the mode is Static. Remove this if using dhcp.>",
-            "ip": "<Static IP address. Remove this if using dhcp.>",
-            "prefix": "<Network prefix length. Use only when the mode is 'static'. Remove if the mode is 'dhcp'. This is the number of bits set in the subnet mask; for instance, if the subnet mask is 255.255.255.0, there are 24 bits in the binary version of the subnet mask, so the prefix length is 24. If used, the values must be in the inclusive range of 0 to 32 for IPv4 and 0 to 128 for IPv6.>",
-            "gateway": "<Gateway IP address. Remove this if using dhcp.>",
+            "ip_family": "ipv4", // <8>
+            "mode": "static", // <9>
+            "system_name": "<FQDN or IP address for the appliance>", // <10>
+            "ip": "<Static IP address>", // <11>
+            "prefix": "<Network prefix length>", // <12>
+            "gateway": "<Gateway IP address>", // <13>
             "dns_servers": [
-                "<DNS Server IP Address. Optional when the mode is Static. Remove this if using dhcp.>"
+                "<DNS Server IP Address>" // <14>
             ]
         },
         "os": {
-            "password": "<Appliance root password; refer to --template-help for password policy. If left blank, or omitted, you will be prompted to enter it at the command console during template verification.>",
-            "ntp_servers": "time.nist.gov",
-            "ssh_enable": false
+            "password": "<Appliance root password>", // <15>
+            "ntp_servers": "time.nist.gov", // <16>
+            "ssh_enable": false // <17>
         },
         "sso": {
-            "password": "<vCenter Single Sign-On administrator password; refer to --template-help for password policy. If left blank, or omitted, you will be prompted to enter it at the command console during template verification.>",
-            "domain_name": "vsphere.local"
+            "password": "<vCenter Single Sign-On administrator password>", // <18>
+            "domain_name": "vsphere.local" // <19>
         }
     },
     "ceip": {
@@ -151,54 +150,36 @@ NOTE: Newer and older versions should work however they will require different v
             "__comments": [
                 "++++VMware Customer Experience Improvement Program (CEIP)++++",
                 "VMware's Customer Experience Improvement Program (CEIP) ",
-                "provides VMware with information that enables VMware to ",
-                "improve its products and services, to fix problems, ",
-                "and to advise you on how best to deploy and use our ",
-                "products. As part of CEIP, VMware collects technical ",
-                "information about your organization's use of VMware ",
-                "products and services on a regular basis in association ",
-                "with your organization's VMware license key(s). This ",
-                "information does not personally identify any individual. ",
-                "",
-                "Additional information regarding the data collected ",
-                "through CEIP and the purposes for which it is used by ",
-                "VMware is set forth in the Trust & Assurance Center at ",
-                "http://www.vmware.com/trustvmware/ceip.html . If you ",
-                "prefer not to participate in VMware's CEIP for this ",
-                "product, you should disable CEIP by setting ",
-                "'ceip_enabled': false. You may join or leave VMware's ",
-                "CEIP for this product at any time. Please confirm your ",
-                "acknowledgement by passing in the parameter ",
-                "--acknowledge-ceip in the command line.",
                 "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
             ]
         },
         "settings": {
-            "ceip_enabled": true
+            "ceip_enabled": true // <20>
         }
     }
 }
 ----
-<1> ESX_SERVER
+<1> = { ESX_SERVER }
+<2> = { ESX_USER_NAME }
+<3> = { ESX_USER_PASS }
+<4> = { ESX_NETWORK }
+<5> = { ESX_DATASTORE }
+<6> = The default size (small) supports 100 hosts and 1,000 virtual machines. If your deployment will exceed this please review VMware documentation and adjust accordingly.
+<7> = { VCSA_SERVER } // this is the name of the VM as displayed in inventory not the hostname of the system as it will be resolved with DNS but they can be the same
+<8> = Leave default unless IPv6 will be used. These instructions do not currenly account for IPv6.
+<9> = Leave default unless DHCP will be used. These instructions do not currenly account for DHCP.
+<10> = { VCSA_SERVER }
+<11> = { VCSA_IP_ADDRESS }
+<12> = Leave default unless the network is of a different size.
+<13> = { VCSA_IP_GATEWAY }
+<14> = { VCSA_IP_DNS }
+<15> = { VCSA_USER_PASS }
+<16> = { VCSA_NTP }
+<17> = Leave default unless you will require SSH access to the VCSA. Note: SSH can be enabled after deployment if needed.
+<18> = { VCSA_SSO_PASS }
+<19> = Leave default unless a custom domain is desired. Note: This is not the domain name for your existing network. This is for local authentication. Your existing authentication domain can be added after deployment. See VMware documentation.
+<20> = If your deployment is disconnected (not connected to the internet), this optional setting should be set to false.
 ====
-
-.. new_vcsa.esxi.hostname = { ESX_SERVER }
-.. new_vcsa.esxi.username = { ESX_USER_NAME }
-.. new_vcsa.esxi.password = { ESX_USER_PASS } 
-.. new_vcsa.esxi.deployment_network = { ESX_NETWORK }
-.. new_vcsa.esxi.datastore = { ESX_DATASTORE } 
-.. new_vcsa.appliance.name = { VCSA_SERVER }
-.. new_vcsa.network.system_name = { VCSA_SERVER }
-.. new_vcsa.network.ip = 
-.. new_vcsa.network.prefix = 
-.. new_vcsa.network.gateway = 
-.. new_vcsa.network.dns_servers = 
-.. new_vcsa.os.password = 
-.. new_vcsa.os.ntp_servers =
-.. new_vcsa.sso.password = 
-.. new_vcsa.sso.domain_name = 
-   
-WARNING: Domain_name is for SSO not your local domain
 
 [start=7]  
 . Run the command to deploy the VCSA pointing to the vctemplate.json file
